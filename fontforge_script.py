@@ -138,12 +138,12 @@ def generate_font(jp_style, eng_style, merged_style, italic=False):
 
     jp_font, eng_font = open_fonts(jp_style, eng_style)
 
-    # jpdoc: 日本語記号を使用
+    # jpdoc: 罫線・ブロック要素を除き、日本語記号を削除
     if options.get("jpdoc"):
         remove_jpdoc_symbols(eng_font)
-        adjust_box_drawing_symbols(jp_font)
-    else:
-        adjust_box_drawing_symbols(eng_font)
+
+    # 罫線調整は常にeng_fontに適用
+    adjust_box_drawing_symbols(eng_font)
 
     delete_duplicate_glyphs(jp_font, eng_font)
     em_1000(jp_font)
@@ -271,6 +271,12 @@ def delete_duplicate_glyphs(jp_font, eng_font):
     for glyph in jp_font.selection.byGlyphs:
         glyph.clear()
 
+    # 罫線・ブロック要素（U+2500-259F）はeng_font側を優先
+    jp_font.selection.none()
+    jp_font.selection.select(("ranges",), 0x2500, 0x259F)
+    for glyph in jp_font.selection.byGlyphs:
+        glyph.clear()
+
     jp_font.selection.none()
     eng_font.selection.none()
 
@@ -301,7 +307,7 @@ def remove_jpdoc_symbols(eng_font):
         (0x221A, 0x221A), (0x221E, 0x221E), (0x2010, 0x2010), (0x2018, 0x201A), (0x201C, 0x201E),
         (0x2020, 0x2021), (0x2026, 0x2026), (0x2030, 0x2030), (0x2190, 0x2193), (0x2200, 0x2200),
         (0x2202, 0x2203), (0x2208, 0x2208), (0x220B, 0x220B), (0x2211, 0x2211), (0x2225, 0x2225),
-        (0x2227, 0x222C), (0x2260, 0x2261), (0x2282, 0x2283), (0x2286, 0x2287), (0x2500, 0x259F)
+        (0x2227, 0x222C), (0x2260, 0x2261), (0x2282, 0x2283), (0x2286, 0x2287),
     ]
     
     count = 0
@@ -311,7 +317,9 @@ def remove_jpdoc_symbols(eng_font):
         bbox = glyph.boundingBox()
         
         should_remove = False
-        if bbox[3] > limit_top or bbox[1] < limit_bottom:
+        # 罫線・ブロック要素は境界チェック対象外
+        is_box_drawing = (u != -1 and 0x2500 <= u <= 0x259F)
+        if not is_box_drawing and (bbox[3] > limit_top or bbox[1] < limit_bottom):
             should_remove = True
         
         if not should_remove and u != -1:
@@ -320,8 +328,14 @@ def remove_jpdoc_symbols(eng_font):
                     should_remove = True
                     break
         
+        # U+25A0以降の幾何学記号のみ削除（罫線は残す）
         if not should_remove and name.startswith("uni25") and len(name) == 7:
-            should_remove = True
+            try:
+                code = int(name[3:], 16)
+                if code >= 0x25A0:
+                    should_remove = True
+            except ValueError:
+                pass
             
         if should_remove:
             glyph.clear()

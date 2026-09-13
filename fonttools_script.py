@@ -89,7 +89,21 @@ def edit_fonts(specific_variant: str, line_height: float = None):
 
 
 def add_hinting(input_font_path, output_font_path):
-    """フォントにヒンティングを付ける"""
+    """フォントにヒンティングを付与（罫線・ブロック要素は除外）"""
+    # 罫線・ブロック要素（U+2500-U+259F）をヒンティング対象から除外するため事前に退避
+    original_font = ttLib.TTFont(input_font_path)
+    original_glyf = original_font.get("glyf")
+    cmap = original_font.getBestCmap()
+
+    saved_glyphs = {}
+    if original_glyf:
+        for code in range(0x2500, 0x259F + 1):
+            if code in cmap:
+                glyph_name = cmap[code]
+                if glyph_name in original_glyf:
+                    saved_glyphs[glyph_name] = original_glyf[glyph_name]
+    original_font.close()
+
     args = [
         "-l",
         "6",
@@ -110,6 +124,18 @@ def add_hinting(input_font_path, output_font_path):
     options_ = options.parse_args(args)
     print("exec hinting", options_)
     ttfautohint(**options_)
+
+    # 退避したグリフを未ヒンティングの状態で復元
+    if saved_glyphs:
+        hinted_font = ttLib.TTFont(output_font_path)
+        hinted_glyf = hinted_font.get("glyf")
+        if hinted_glyf:
+            for glyph_name, glyph_data in saved_glyphs.items():
+                if glyph_name in hinted_glyf:
+                    hinted_glyf[glyph_name] = glyph_data
+            hinted_font.save(output_font_path)
+            print(f"Restored {len(saved_glyphs)} box drawing glyphs (unhinted)")
+        hinted_font.close()
 
 
 def merge_fonts(style, variant):
