@@ -5,7 +5,6 @@ import math
 import os
 import shutil
 import sys
-import uuid
 
 import fontforge
 import psMat
@@ -194,45 +193,9 @@ def open_fonts(jp_style: str, eng_style: str):
         f"{SOURCE_FONTS_DIR}/{ENG_FONT.replace('{style}', eng_style)}"
     )
 
-    jp_font = altuni_to_entity(jp_font)
     jp_font.unlinkReferences()
     eng_font.unlinkReferences()
     return jp_font, eng_font
-
-
-def altuni_to_entity(jp_font):
-    """透過参照を実体グリフに変換"""
-    for glyph in jp_font.glyphs():
-        if glyph.altuni is not None:
-            # (unicode-value, variation-selector, reserved-field)
-            altunis = glyph.altuni
-
-            before_altuni = ""
-            for altuni in altunis:
-                if altuni[1] == -1 and before_altuni != ",".join(map(str, altuni)):
-                    glyph.altuni = None
-                    copy_target_unicode = altuni[0]
-                    try:
-                        copy_target_glyph = jp_font.createChar(
-                            copy_target_unicode,
-                            f"uni{hex(copy_target_unicode).replace('0x', '').upper()}copy",
-                        )
-                    except (TypeError, ValueError, KeyError):
-                        copy_target_glyph = jp_font[copy_target_unicode]
-                    copy_target_glyph.clear()
-                    copy_target_glyph.width = glyph.width
-                    jp_font.selection.select(glyph.glyphname)
-                    jp_font.copy()
-                    jp_font.selection.select(copy_target_glyph.glyphname)
-                    jp_font.paste()
-                before_altuni = ",".join(map(str, altuni))
-    # エンコーディング整理のため開き直す
-    font_path = f"{BUILD_FONTS_DIR}/{jp_font.fullname}_{uuid.uuid4()}.ttf"
-    jp_font.generate(font_path)
-    jp_font.close()
-    reopen_jp_font = fontforge.open(font_path)
-    os.remove(font_path)
-    return reopen_jp_font
 
 
 def adjust_some_glyph(jp_font):
