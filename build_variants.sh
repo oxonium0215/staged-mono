@@ -8,7 +8,7 @@ mkdir -p build_logs
 # Determine Python interpreter
 PYTHON_EXE=python3
 
-if [ -z "$GITHUB_ACTIONS" ]; then
+if [ -z "$GITHUB_ACTIONS" ] && [ ! -f /.dockerenv ]; then
     # Ensure dependencies locally
     if [ ! -d "node_modules" ]; then
         echo "Installing Node.js dependencies..."

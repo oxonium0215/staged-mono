@@ -68,6 +68,12 @@ GitHub Actions から、好みの設定で自分専用のフォントをビル�
 - Python: `>= 3.8`
 - ttfautohint
 
+### Docker を利用する場合
+```bash
+docker build -t staged-mono-builder .
+docker run --rm -v "$(pwd):/work" staged-mono-builder
+```
+
 ### Linux / macOS
 ```bash
 chmod +x build_variants.sh

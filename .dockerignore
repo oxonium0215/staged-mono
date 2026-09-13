@@ -1,0 +1,9 @@
+.git
+.venv
+venv
+build
+build_work
+build_logs
+dist
+node_modules
+*.log
