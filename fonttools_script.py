@@ -89,19 +89,30 @@ def edit_fonts(specific_variant: str, line_height: float = None):
 
 
 def add_hinting(input_font_path, output_font_path):
-    """フォントにヒンティングを付与（罫線・ブロック要素は除外）"""
-    # 罫線・ブロック要素（U+2500-U+259F）をヒンティング対象から除外するため事前に退避
+    """フォントにヒンティングを付与（罫線・大型括弧・Powerline記号は除外）"""
+    # 接続性や形状崩れを防ぐため、特定グリフをヒンティング対象から除外（事前に退避）
+    # - 罫線・ブロック要素: U+2500 - U+259F
+    # - 大型括弧パーツ: U+239B - U+23AE (HackGen #50)
+    # - Powerline 記号: U+E0A0 - U+E0A3, U+E0B0 - U+E0D7
+    exclude_ranges = [
+        (0x239B, 0x23AE),
+        (0x2500, 0x259F),
+        (0xE0A0, 0xE0A3),
+        (0xE0B0, 0xE0D7),
+    ]
+
     original_font = ttLib.TTFont(input_font_path)
     original_glyf = original_font.get("glyf")
     cmap = original_font.getBestCmap()
 
     saved_glyphs = {}
     if original_glyf:
-        for code in range(0x2500, 0x259F + 1):
-            if code in cmap:
-                glyph_name = cmap[code]
-                if glyph_name in original_glyf:
-                    saved_glyphs[glyph_name] = original_glyf[glyph_name]
+        for start, end in exclude_ranges:
+            for code in range(start, end + 1):
+                if code in cmap:
+                    glyph_name = cmap[code]
+                    if glyph_name in original_glyf:
+                        saved_glyphs[glyph_name] = original_glyf[glyph_name]
     original_font.close()
 
     args = [
@@ -134,7 +145,7 @@ def add_hinting(input_font_path, output_font_path):
                 if glyph_name in hinted_glyf:
                     hinted_glyf[glyph_name] = glyph_data
             hinted_font.save(output_font_path)
-            print(f"Restored {len(saved_glyphs)} box drawing glyphs (unhinted)")
+            print(f"Restored {len(saved_glyphs)} unhinted glyphs (box drawing, brackets, powerline)")
         hinted_font.close()
 
 
