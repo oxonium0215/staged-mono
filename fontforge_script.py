@@ -211,6 +211,40 @@ def adjust_some_glyph(jp_font):
         glyph.transform(psMat.translate(adjust_length, 0))
         glyph.width = full_width
 
+    # 全角記号（コロン、セミコロン、引用符、句読点など）の可読性向上のため拡大
+    for uni in [0xFF1B, 0xFF1A, 0xFF07, 0xFF02, 0xFF0C, 0xFF0E] + list(
+        range(0x2018, 0x201F + 1)
+    ):
+        try:
+            glyph = jp_font[uni]
+            if glyph.isWorthOutputting():
+                scale_glyph_from_center(glyph, 1.15, 1.2)
+        except (TypeError, ValueError, KeyError):
+            continue
+    jp_font.selection.none()
+
+
+def scale_glyph_from_center(glyph, scale_x, scale_y):
+    """グリフの中心を基点とした拡大・位置調整"""
+    original_width = glyph.width
+    before_bb = glyph.boundingBox()
+    before_center_x = (before_bb[0] + before_bb[2]) / 2
+    before_center_y = (before_bb[1] + before_bb[3]) / 2
+
+    glyph.transform(psMat.scale(scale_x, scale_y))
+
+    after_bb = glyph.boundingBox()
+    after_center_x = (after_bb[0] + after_bb[2]) / 2
+    after_center_y = (after_bb[1] + after_bb[3]) / 2
+
+    glyph.transform(
+        psMat.translate(
+            before_center_x - after_center_x,
+            before_center_y - after_center_y,
+        )
+    )
+    glyph.width = original_width
+
 
 def em_1000(font):
     """フォントのEMを1000に変換"""
