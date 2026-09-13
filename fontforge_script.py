@@ -221,6 +221,18 @@ def adjust_some_glyph(jp_font):
                 scale_glyph_from_center(glyph, 1.15, 1.2)
         except (TypeError, ValueError, KeyError):
             continue
+
+    # 空白可視化記号（U+2423: open box）を半角幅に調整
+    try:
+        glyph = jp_font[0x2423]
+        if glyph.isWorthOutputting():
+            x_scale = HALF_WIDTH_35 / glyph.width
+            glyph.transform(psMat.scale(x_scale, 1))
+            glyph.transform(psMat.translate((HALF_WIDTH_35 - glyph.width) / 2, 0))
+            glyph.width = HALF_WIDTH_35
+    except (TypeError, ValueError, KeyError):
+        pass
+
     jp_font.selection.none()
 
 
